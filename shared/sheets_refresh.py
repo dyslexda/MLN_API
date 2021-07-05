@@ -1,13 +1,12 @@
-import deepdiff, json, asyncio, time
+import deepdiff, json, asyncio, time, logging
+from logging.handlers import RotatingFileHandler
 from peewee import *
 from os import environ, path
 from dotenv import load_dotenv
 from api_models import *
 from playhouse.shortcuts import model_to_dict
 
-
 secret_path = basedir + '/shared/client_secret.json'
-
 
 # Keys for zipping dicts for entering to database
 all_pas_keys = ['Play_No','Inning','Outs','BRC','Play_Type','Pitcher','Pitch_No','Batter','Swing_No','Catcher','Throw_No','Runner','Steal_No','Result','Run_Scored','Ghost_Scored','RBIs','Stolen_Base','Diff','Runs_Scored_On_Play','Off_Team','Def_Team','Game_No','Session_No','Inning_No','Pitcher_ID','Batter_ID','Catcher_ID','Runner_ID']
@@ -43,20 +42,54 @@ schedules_keys = ['Session','Game_No','Away','Home','Game_ID','A_Score','H_Score
 
 lineups_keys = ['Game_No','Team','Player','Play_Entrance','Position','Order','Pitcher_No']
 
+logging.basicConfig(level=logging.ERROR)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger("baseball")
+sheets_handler = RotatingFileHandler(filename='logs/sheets_ref.log', maxBytes=10240, backupCount=10)
+sheets_handler.setFormatter(formatter)
+logger.addHandler(sheets_handler)
+
+def sleep_dec(func):
+    async def inner(sleeptime=60*15):
+        while True:
+            try: func()
+            except Exception as e: 
+                msg = func.__name__ + e
+                logger.error(msg)
+            await asyncio.sleep(sleeptime)
+    return inner
+
 def access_sheets():
     gSheet = pygsheets.authorize(service_file=secret_path)
     global prev_pas_sh, cur_pas_sh, persons_sh, teams_sh, schedules_sh, persons_defaults, home_sh, lineups_sh
-    global card1, card2, card3, card4, card5, card6, card7, card8
     p_master_log = gSheet.open_by_key(environ.get('P_MASTER_LOG'))
     prev_pas_sh = p_master_log.worksheet_by_title("All_PAs_1-5")
     cur_pas_sh = p_master_log.worksheet_by_title("All_PAs_6")
     persons_sh = p_master_log.worksheet_by_title("Persons")
     teams_sh = p_master_log.worksheet_by_title("Teams")
     schedules_sh = p_master_log.worksheet_by_title("Schedule")
-    
     ump_central = gSheet.open_by_key('15s8vfZMNPx-yLVQTegSqobNlNeMrlt2ooWJpQmvbjBg')
     home_sh = ump_central.worksheet_by_title('HOME')
     lineups_sh = ump_central.worksheet_by_title('Lineup Cards')
+
+def generate_db():
+    db.connect(reuse_if_open=True)
+    db.drop_tables([PAs,Lineups])
+    db.create_tables([PAs])
+    build_plays_old()
+    build_plays_cur()
+    persons = build_persons()
+    teams = build_teams()
+    schedules = build_schedules()
+    with db.atomic():
+        if persons and teams and schedules:
+            db.drop_tables([Persons,Teams,Schedules])
+            db.create_tables([Persons,Teams,Schedules])
+            Persons.insert_many(persons).execute()
+            Teams.insert_many(teams).execute()
+            Schedules.insert_many(schedules).execute()
+            db.create_tables([Lineups])
+    db.close()
 
 def build_plays_cur():
     pas = []
@@ -162,46 +195,26 @@ def build_schedules():
     except AssertionError:
         return(None)
 
-async def update_pas(sleeptime):
-    while True:
-        pas_list = cur_pas_sh.get_all_values(include_tailing_empty_rows=False)
-        cur_session = pas_list[-1][0][0:3]
-        int_list = ['Play_No','Outs','BRC','Pitch_No','Swing_No','Throw_No','Steal_No','Run_Scored','Ghost_Scored','RBIs','Stolen_Base','Diff','Runs_Scored_On_Play','Game_No','Session_No','Inning_No','Pitcher_ID','Batter_ID','Catcher_ID','Runner_ID']
-        for i in pas_list:
-            if i[0].startswith(cur_session):
-                sheet_pa_dict = dict(zip(all_pas_keys,i))
-                for cat in sheet_pa_dict: 
-                    if sheet_pa_dict[cat] == '': sheet_pa_dict[cat] = None
-                    elif cat in int_list: sheet_pa_dict[cat] = int(sheet_pa_dict[cat])
-                pa, created = PAs.get_or_create(Play_No=i[0],defaults=sheet_pa_dict)
-                if not created:
-                    diff = deepdiff.DeepDiff(pa.sheets_compare_int(),sheet_pa_dict)
-                    if bool(diff):
-                        changed = {}
-                        for diff_type in ['values_changed','type_changes']:
-                            if diff_type in diff:
-                                for val in diff[diff_type]: changed[val[6:-2]] = diff[diff_type][val]['new_value']
-                        PAs.update(changed).where(PAs.Play_No == pa.Play_No).execute()
-        await asyncio.sleep(sleeptime)
-
-def generate_db():
-    db.connect(reuse_if_open=True)
-    db.drop_tables([PAs,Lineups])
-    db.create_tables([PAs])
-    build_plays_old()
-    build_plays_cur()
-    persons = build_persons()
-    teams = build_teams()
-    schedules = build_schedules()
-    with db.atomic():
-        if persons and teams and schedules:
-            db.drop_tables([Persons,Teams,Schedules])
-            db.create_tables([Persons,Teams,Schedules])
-            Persons.insert_many(persons).execute()
-            Teams.insert_many(teams).execute()
-            Schedules.insert_many(schedules).execute()
-            db.create_tables([Lineups])
-    db.close()
+@sleep_dec
+def update_pas():
+    pas_list = cur_pas_sh.get_all_values(include_tailing_empty_rows=False)
+    cur_session = pas_list[-1][0][0:3]
+    int_list = ['Play_No','Outs','BRC','Pitch_No','Swing_No','Throw_No','Steal_No','Run_Scored','Ghost_Scored','RBIs','Stolen_Base','Diff','Runs_Scored_On_Play','Game_No','Session_No','Inning_No','Pitcher_ID','Batter_ID','Catcher_ID','Runner_ID']
+    for i in pas_list:
+        if i[0].startswith(cur_session):
+            sheet_pa_dict = dict(zip(all_pas_keys,i))
+            for cat in sheet_pa_dict: 
+                if sheet_pa_dict[cat] == '': sheet_pa_dict[cat] = None
+                elif cat in int_list: sheet_pa_dict[cat] = int(sheet_pa_dict[cat])
+            pa, created = PAs.get_or_create(Play_No=i[0],defaults=sheet_pa_dict)
+            if not created:
+                diff = deepdiff.DeepDiff(pa.sheets_compare_int(),sheet_pa_dict)
+                if bool(diff):
+                    changed = {}
+                    for diff_type in ['values_changed','type_changes']:
+                        if diff_type in diff:
+                            for val in diff[diff_type]: changed[val[6:-2]] = diff[diff_type][val]['new_value']
+                    PAs.update(changed).where(PAs.Play_No == pa.Play_No).execute()
 
 def validate_persons(persons):
     ref_person = []
@@ -215,31 +228,30 @@ def validate_persons(persons):
     except AssertionError:
         return(None)
 
-async def update_persons(sleeptime):
+@sleep_dec
+def update_persons():
     int_list = ['PersonID','CON','EYE','PWR','SPD','MOV','CMD','VEL','AWR']
-    while True:
-        persons = []
-        persons_data = persons_sh.get_all_values(include_tailing_empty_rows=False)
-        persons_data.pop(0) #header row
-        for p in persons_data:
-            person = dict(zip(persons_keys,p))
-            for cat in person:
-                if person[cat] == '': person[cat] = persons_defaults[cat]
-                elif person[cat] == 'Y': person[cat] = True
-                elif person[cat] == 'N': person[cat] = False
-                elif cat in int_list: person[cat] = int(person[cat])
-            persons.append(person)
-        persons = validate_persons(persons)
-        if persons:
-            for p in persons:
-                person, created = Persons.get_or_create(PersonID = p['PersonID'],defaults=p)
-                if not created:
-                    diff = deepdiff.DeepDiff(person.sheets_compare(),p)
-                    if bool(diff):
-                        changed = {}
-                        for val in diff['values_changed']: changed[val[6:-2]] = diff['values_changed'][val]['new_value']
-                        Persons.update(changed).where(Persons.PersonID == person.PersonID).execute()
-        await asyncio.sleep(sleeptime)
+    persons = []
+    persons_data = persons_sh.get_all_values(include_tailing_empty_rows=False)
+    persons_data.pop(0) #header row
+    for p in persons_data:
+        person = dict(zip(persons_keys,p))
+        for cat in person:
+            if person[cat] == '': person[cat] = persons_defaults[cat]
+            elif person[cat] == 'Y': person[cat] = True
+            elif person[cat] == 'N': person[cat] = False
+            elif cat in int_list: person[cat] = int(person[cat])
+        persons.append(person)
+    persons = validate_persons(persons)
+    if persons:
+        for p in persons:
+            person, created = Persons.get_or_create(PersonID = p['PersonID'],defaults=p)
+            if not created:
+                diff = deepdiff.DeepDiff(person.sheets_compare(),p)
+                if bool(diff):
+                    changed = {}
+                    for val in diff['values_changed']: changed[val[6:-2]] = diff['values_changed'][val]['new_value']
+                    Persons.update(changed).where(Persons.PersonID == person.PersonID).execute()
 
 def validate_schedules(schedules):
     ref_sched = []
@@ -252,34 +264,33 @@ def validate_schedules(schedules):
     except AssertionError:
         return(None)
 
-async def update_schedules(sleeptime):
+@sleep_dec
+def update_schedules():
     int_list = ['Session','Game_No','Total_Plays','H_Score','A_Score']
     flt_list = ['Duration','Plays_Per_Day']
-    while True:
-        schedules = []
-        schedules_data = schedules_sh.get_all_values(include_tailing_empty_rows=False)
-        for s in schedules_data:
-            schedule = dict(zip(schedules_keys,s))
-            if schedule['Session'] != 'Session':
-                if int(schedule['Session']) != 0 and int(schedule['Session']) < 18:
-                    for cat in schedule:
-                        if schedule[cat] == '': schedule[cat] = None
-                        elif cat in int_list: schedule[cat] = int(schedule[cat])
-                        elif cat in flt_list: schedule[cat] = float(schedule[cat])
-                    schedules.append(schedule)
-        schedules = validate_schedules(schedules)
-        if schedules:
-            for s in schedules:
-                sched = Schedules.get(Schedules.Game_No == s['Game_No'])
-                diff = deepdiff.DeepDiff(sched.sheets_compare(),s)
-                if bool(diff):
-                    changed = {}
-                    for diff_type in ['values_changed','type_changes']:
-                        if diff_type in diff:
-                            for val in diff[diff_type]: changed[val[6:-2]] = diff[diff_type][val]['new_value']
-#                    for val in diff['values_changed']: changed[val[6:-2]] = diff['values_changed'][val]['new_value']
-                    Schedules.update(changed).where(Schedules.Game_No == sched.Game_No).execute()
-        await asyncio.sleep(sleeptime)
+    schedules = []
+    schedules_data = schedules_sh.get_all_values(include_tailing_empty_rows=False)
+    for s in schedules_data:
+        schedule = dict(zip(schedules_keys,s))
+        if schedule['Session'] != 'Session':
+            if int(schedule['Session']) != 0 and int(schedule['Session']) < 18:
+                for cat in schedule:
+                    if schedule[cat] == '': schedule[cat] = None
+                    elif cat in int_list: schedule[cat] = int(schedule[cat])
+                    elif cat in flt_list: schedule[cat] = float(schedule[cat])
+                schedules.append(schedule)
+    schedules = validate_schedules(schedules)
+    if schedules:
+        for s in schedules:
+            sched = Schedules.get(Schedules.Game_No == s['Game_No'])
+            diff = deepdiff.DeepDiff(sched.sheets_compare(),s)
+            if bool(diff):
+                changed = {}
+                for diff_type in ['values_changed','type_changes']:
+                    if diff_type in diff:
+                        for val in diff[diff_type]: changed[val[6:-2]] = diff[diff_type][val]['new_value']
+#                for val in diff['values_changed']: changed[val[6:-2]] = diff['values_changed'][val]['new_value']
+                Schedules.update(changed).where(Schedules.Game_No == sched.Game_No).execute()
 
 def validate_teams(teams):
     ref_team = []
@@ -292,24 +303,23 @@ def validate_teams(teams):
     except AssertionError:
         return(None)
 
-async def update_teams(sleeptime):
-    while True:
-        teams = []
-        teams_data = teams_sh.get_all_values(include_tailing_empty_rows=False)
-        for t in teams_data:
-            team = dict(zip(teams_keys,t))
-            teams.append(team)
-        teams.pop(0)
-        teams = validate_teams(teams)
-        if teams:
-            for t in teams: 
-                team = Teams.get(Teams.TID == t['TID'])
-                diff = deepdiff.DeepDiff(team.sheets_compare(),t)
-                if bool(diff):
-                    changed = {}
-                    for val in diff['values_changed']: changed[val[6:-2]] = diff['values_changed'][val]['new_value']
-                    Teams.update(changed).where(Teams.TID == team.TID).execute()
-        await asyncio.sleep(sleeptime)
+@sleep_dec
+def update_teams():
+    teams = []
+    teams_data = teams_sh.get_all_values(include_tailing_empty_rows=False)
+    for t in teams_data:
+        team = dict(zip(teams_keys,t))
+        teams.append(team)
+    teams.pop(0)
+    teams = validate_teams(teams)
+    if teams:
+        for t in teams: 
+            team = Teams.get(Teams.TID == t['TID'])
+            diff = deepdiff.DeepDiff(team.sheets_compare(),t)
+            if bool(diff):
+                changed = {}
+                for val in diff['values_changed']: changed[val[6:-2]] = diff['values_changed'][val]['new_value']
+                Teams.update(changed).where(Teams.TID == team.TID).execute()
 
 class lineupCard():
     def __init__(self,num):
@@ -366,16 +376,15 @@ class lineupEntry():
         else:
             return(int(data))
 
-async def update_lineups(sleeptime):
-    while True:
-        cards = {}
-        home_arr = home_sh.get_values(start='A5',end='D12',include_tailing_empty_rows=False)
-        for i in range(len(home_arr)):
-            if home_arr[i][0] != '':
-                cards[i+1] = lineupCard(i+1)
-                [ update_entry(line) for line in cards[i+1].Away_Lineup if line_check(line) ]
-                [ update_entry(line) for line in cards[i+1].Home_Lineup if line_check(line) ]
-        await asyncio.sleep(sleeptime)
+@sleep_dec
+def update_lineups():
+    cards = {}
+    home_arr = home_sh.get_values(start='A5',end='D12',include_tailing_empty_rows=False)
+    for i in range(len(home_arr)):
+        if home_arr[i][0] != '':
+            cards[i+1] = lineupCard(i+1)
+            [ update_entry(line) for line in cards[i+1].Away_Lineup if line_check(line) ]
+            [ update_entry(line) for line in cards[i+1].Home_Lineup if line_check(line) ]
 
 def line_check(line):
     if (line.name != '' and 
@@ -400,14 +409,12 @@ def update_entry(line):
                     for val in diff[diff_type]: changed[val[6:-2]] = diff[diff_type][val]['new_value']
             Lineups.update(changed).where(Lineups.Player == line.player_id, Lineups.Game_No == line.game_no).execute()
 
-
 def main():
     access_sheets()
 #    generate_db()
     loop = asyncio.get_event_loop()
-    cors = asyncio.wait([update_persons(60*15*1),update_schedules(60*5),update_teams(60*15*1),update_pas(60*5),update_lineups(60*5)])
+    cors = asyncio.wait([update_persons(60*60),update_schedules(60*5),update_teams(60*60),update_pas(60*5),update_lineups(60*5)])
     loop.run_until_complete(cors)
-
 
 if __name__ == "__main__":
     main()

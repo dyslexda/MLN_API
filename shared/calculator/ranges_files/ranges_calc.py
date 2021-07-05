@@ -285,11 +285,12 @@ def go_calc(game,result_dict,go_order_dict):
         result_dict['GORA'] = int(Decimal(gora_fraction * go_range).quantize(Decimal('1.'),rounding='ROUND_HALF_UP'))
         # FCH, DP21
         fchdp_fraction = ((-0.1*game.Batter.Speed)+0.8)*1.15
-        result_dict['FCH'] = int(Decimal(fchdp_fraction/2 * go_range).quantize(Decimal('1.'),rounding='ROUND_HALF_UP'))
-        result_dict['DP21'] = result_dict['FCH']
+#        result_dict['FCH'] = int(Decimal(fchdp_fraction/2 * go_range).quantize(Decimal('1.'),rounding='ROUND_HALF_UP')) # FCH removed for S6
+#        result_dict['DP21'] = result_dict['FCH']
+        result_dict['DP21'] = int(Decimal(fchdp_fraction/2 * go_range).quantize(Decimal('1.'),rounding='ROUND_HALF_UP'))
         # DPRun, FC
-        result_dict['FC'] = int((result_dict['GO']-result_dict['GORA']-result_dict['FCH']*2)/2)
-        result_dict['DPRun'] = result_dict['FC']
+        result_dict['DPRun'] = int((result_dict['GO']-result_dict['GORA']-result_dict['DP21']*2)/2)
+        result_dict['FC'] = result_dict['DPRun'] + result_dict['DP21']
         if game.Outs == 1:
             result_dict['DP21'] = result_dict['DP21'] + result_dict['DPRun']
             result_dict.pop('DPRun')
