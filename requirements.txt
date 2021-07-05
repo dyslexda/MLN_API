@@ -1,0 +1,13 @@
+wheel
+numpy
+pygsheets
+python-dotenv
+Flask
+Flask-Admin
+peewee
+flask_assets
+flask_cors
+gunicorn
+connexion[swagger-ui]
+deepdiff
+marshmallow_peewee
