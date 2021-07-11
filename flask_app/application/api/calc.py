@@ -1,6 +1,7 @@
 from shared.api_models import *
 import shared.calculator.ranges_files.ranges_calc as ranges_calc
 import shared.calculator.ranges_files.ranges_lookup as ranges_lookup
+from decimal import Decimal
 
 
 class GameState():
@@ -50,7 +51,7 @@ class PlayerCard():
 def genPlayerCard(input,pos=None):
     if pos == 'p':
         player = PlayerCard(Hand=input[0],Movement=input[1],Command=input[2],Velocity=input[3],Awareness=input[4])
-    elif pos == 'b':
+    elif pos == 'b' or pos == 'r' or pos == 'c':
         player = PlayerCard(Hand=input[0],Contact=input[1],Eye=input[2],Power=input[3],Speed=input[4])
     else:
         player = PlayerCard(Name=input.Stats_Name,Hand=input.Hand,Contact=input.CON,Eye=input.EYE,Power=input.PWR,Speed=input.SPD,Movement=input.MOV,Command=input.CMD,Velocity=input.VEL,Awareness=input.AWR)
@@ -129,19 +130,21 @@ def calcCode(game):
         results[result]['Start'] = current
         results[result]['End'] = end
         current = end + 1
-#    results = []
-#    for result in all_order:
-#        window = ranges[result]
-#        start = current
-#        end = current + window - 1
-#        line = {}
-#        line['Result'] = result
-#        line['Range'] = window
-#        line['Start'] = start
-#        line['End'] = end
-#        results.append(line)
-#        current = end + 1
     return(results,all_order,outcome)
+
+def stealCode(pitcher,catcher,runner,base):
+    battery = int(Decimal((pitcher.Awareness + catcher.Eye)/2).quantize(Decimal('1.'), rounding='ROUND_DOWN'))
+    matchup = runner.Speed - battery
+    response = {}
+    response['pitcher'] = {'Name':pitcher.Name,'Attr':pitcher.p_attr()}
+    response['catcher'] = {'Name':catcher.Name,'Attr':catcher.b_attr()}
+    response['runner'] = {'Name':runner.Name,'Attr':runner.b_attr()}
+    response['battery'] = battery
+    response['matchup'] = matchup
+    response['2'] = ranges_lookup.steal_dict['2'][matchup]
+    response['4'] = ranges_lookup.steal_dict['4'][matchup]
+    response['3'] = ranges_lookup.steal_dict['3'][matchup]
+    return(response)
 
 def formatResponse(game,results,order,outcome):
     pitcher = {'Name':game.Pitcher.Name,'Attr':game.Pitcher.p_attr()}

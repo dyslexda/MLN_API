@@ -89,6 +89,86 @@ paths:
         200:
           description: "Successful calc ranges"
       x-swagger-router-controller: "application.api.api"
+  /calc_steal:
+    get:
+      tags:
+        - "calc_steal"
+      summary: "Calc endpoint for steals"
+      operationId: "calc_steal"
+      responses:
+        200:
+          description: "Steal ranges"
+      parameters:
+        - name: "p_name"
+          in: "query"
+          description: "Full name of player"
+          required: false
+          type: "string"
+        - name: "p_id"
+          in: "query"
+          description: "Player ID, e.g. 1001"
+          required: false
+          type: "integer"
+        - name: "p_attr"
+          in: "query"
+          description: "Attribute array for pitcher, e.g. R5511"
+          required: false
+          type: "string"
+        - name: "c_name"
+          in: "query"
+          description: "Full name of player"
+          required: false
+          type: "string"
+        - name: "c_id"
+          in: "query"
+          description: "Player ID, e.g. 1001"
+          required: false
+          type: "integer"
+        - name: "c_attr"
+          in: "query"
+          description: "Attribute array for catcher, e.g. R5511"
+          required: false
+          type: "string"
+        - name: "r_name"
+          in: "query"
+          description: "Full name of player"
+          required: false
+          type: "string"
+        - name: "r_id"
+          in: "query"
+          description: "Player ID, e.g. 1001"
+          required: false
+          type: "integer"
+        - name: "r_attr"
+          in: "query"
+          description: "Attribute array for runner, e.g. R5511"
+          required: false
+          type: "string"
+        - name: "throw"
+          in: "query"
+          description: "Throw, from 1 to 1000; optional"
+          required: false
+          type: "integer"
+          minimum: 1
+          maximum: 1000
+        - name: "steal"
+          in: "query"
+          description: "Steal, from 1 to 1000; optional"
+          required: false
+          type: "integer"
+          minimum: 1
+          maximum: 1000
+        - name: "base"
+          in: "query"
+          description: "Base to steal"
+          required: false
+          type: "integer"
+          minimum: 2
+          maximum: 4
+      responses:
+        200:
+          description: "Successful calc ranges"
+      x-swagger-router-controller: "application.api.api"
   /persons:
     get:
       tags:

@@ -34,7 +34,7 @@ def get_some_persons(**kwargs):
 def schedules(Team=None):
     schedules = Schedules.select()
     if Team:
-        schedules = schedules.where((Schedules.Away == Team) | (Schedules.Home == Team))
+        schedules = schedules.where((Schedules.Away == Team) | (Schedules.Home == Team)).order_by(Schedules.Game_No.asc())
     dumped = SchedulesSchema(many=True).dump(schedules)
     return(dumped)
 
@@ -118,3 +118,19 @@ def calc(**kwargs):
     results,order,outcome = calcCode(game)
     response = formatResponse(game,results,order,outcome)
     return(response)
+
+def calc_steal(**kwargs):
+    errors = []
+    throw,steal,base = None,None,None
+    pitcher,errors = playerValidation(kwargs,'p',errors)
+    runner,errors = playerValidation(kwargs,'r',errors)
+    catcher,errors = playerValidation(kwargs,'c',errors)
+    if 'throw' in kwargs: throw = kwargs['throw']
+    if 'steal' in kwargs: steal = kwargs['steal']
+    if len(errors) != 0:
+        return errors,400
+    if 'base' in kwargs: base = kwargs['base']
+    response = stealCode(pitcher,catcher,runner,base)
+    return(response)
+
+
