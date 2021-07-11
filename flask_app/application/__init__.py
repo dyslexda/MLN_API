@@ -42,9 +42,10 @@ def create_app():
         @app.before_request
         def before_request():
             db.connect(reuse_if_open=True)
-            if not request.environ['RAW_URI'].endswith(tuple(['.css','.js','.png','.ico'])):
-                report = access_log(request)
-                logger.info(report)
+            if not app.debug: 
+                if not request.environ['RAW_URI'].endswith(tuple(['.css','.js','.png','.ico'])):
+                    report = access_log(request)
+                    logger.info(report)
         @app.teardown_request
         def after_request(response):
             db.close()
