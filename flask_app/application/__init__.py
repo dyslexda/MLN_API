@@ -15,7 +15,7 @@ def create_app():
     connex_app.add_api('specification.yml')
     app = connex_app.app
     CORS(app)
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.ERROR)
     app.config.from_object('config.Config')
     assets = Environment()
     assets.init_app(app)
@@ -24,6 +24,7 @@ def create_app():
         if not os.path.exists('logs'):
             os.mkdir('logs')
         logger = logging.getLogger("baseball")
+        logger.setLevel(logging.INFO)
         error_handler = RotatingFileHandler(filename='logs/baseball.log', maxBytes=10240, backupCount=10)
         error_handler.addFilter(LevelFilter(40,50))
         access_handler = RotatingFileHandler(filename='logs/access.log', maxBytes=10240, backupCount=10)

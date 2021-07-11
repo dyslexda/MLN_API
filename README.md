@@ -1,4 +1,4 @@
-# MLG_app
+# MLN App
 Major League Numberball API
 
 www.majorleagueguessball.com/api/v1/ui/
@@ -23,8 +23,8 @@ sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 1
 sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 2
 git clone https://github.com/dyslexda/MLN_API.git
 cd MLN_API
-python3 -m venv mlg-env
-source mlg-env/bin/activate
+python3 -m venv mln-env
+source mln-env/bin/activate
 pip3 install -r requirements.txt
 ```
 

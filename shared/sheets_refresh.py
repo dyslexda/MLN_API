@@ -54,7 +54,7 @@ def sleep_dec(func):
         while True:
             try: func()
             except Exception as e: 
-                msg = func.__name__ + e
+                msg = func.__name__ + str(e)
                 logger.error(msg)
             await asyncio.sleep(sleeptime)
     return inner
@@ -288,9 +288,10 @@ def update_schedules():
                 changed = {}
                 for diff_type in ['values_changed','type_changes']:
                     if diff_type in diff:
-                        for val in diff[diff_type]: changed[val[6:-2]] = diff[diff_type][val]['new_value']
-#                for val in diff['values_changed']: changed[val[6:-2]] = diff['values_changed'][val]['new_value']
-                Schedules.update(changed).where(Schedules.Game_No == sched.Game_No).execute()
+                        for val in diff[diff_type]: 
+                            if diff[diff_type][val]['new_value'] != '#REF!':
+                                changed[val[6:-2]] = diff[diff_type][val]['new_value']
+                if bool(changed): Schedules.update(changed).where(Schedules.Game_No == sched.Game_No).execute()
 
 def validate_teams(teams):
     ref_team = []
