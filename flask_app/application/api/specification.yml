@@ -743,6 +743,8 @@ definitions:
           $ref: "#/definitions/LeagueStandings"
       season:
         type: "integer"
+      session:
+        type: "integer"
   LeagueStandings:
     properties:
       standings:
