@@ -91,6 +91,18 @@ def generate_db():
             db.create_tables([Lineups])
     db.close()
 
+def build_meta():
+    db.connect(reuse_if_open=True)
+    db.drop_tables([Metadata])
+    db.create_tables([Metadata])
+    home_arr = home_sh.get_values(start='B1',end='B2',include_tailing_empty_rows=False)
+    try:
+        meta = {'Current_Season':int(home_arr[0][0]), 'Current_Session':int(home_arr[1][0])}
+        with db.atomic():
+            Metadata.insert(meta).execute()
+    except Error as e:
+        print(e)
+
 def build_plays_cur():
     pas = []
     cur_pas_val = cur_pas_sh.get_all_values(include_tailing_empty_rows=False)
@@ -378,6 +390,18 @@ class lineupEntry():
             return(int(data))
 
 @sleep_dec
+def update_meta():
+    home_arr = home_sh.get_values(start='B1',end='B2',include_tailing_empty_rows=False)
+    meta = {'Current_Season':int(home_arr[0][0]), 'Current_Session':int(home_arr[1][0])}
+    if type(meta['Current_Season']) == int and type(meta['Current_Session']) == int:
+        with db.atomic():
+            entry = Metadata.get_by_id(1)
+            entry.Current_Season = meta['Current_Season']
+            entry.Current_Session = meta['Current_Session']
+            entry.save()
+
+
+@sleep_dec
 def update_lineups():
     cards = {}
     home_arr = home_sh.get_values(start='A5',end='D12',include_tailing_empty_rows=False)
@@ -414,7 +438,7 @@ def main():
     access_sheets()
 #    generate_db()
     loop = asyncio.get_event_loop()
-    cors = asyncio.wait([update_persons(60*60),update_schedules(60*5),update_teams(60*60),update_pas(60*5),update_lineups(60*5)])
+    cors = asyncio.wait([update_persons(60*60),update_schedules(60*5),update_teams(60*60),update_pas(60*5),update_lineups(60*5),update_meta(60*60)])
     loop.run_until_complete(cors)
 
 if __name__ == "__main__":

@@ -17,7 +17,10 @@ class BaseModel(Model):
     class Meta:
         database = db
 
-
+class Metadata(BaseModel):
+    id = AutoField(primary_key=True)
+    Current_Season = IntegerField()
+    Current_Session = IntegerField()
 
 class Teams(BaseModel):
     id = AutoField(primary_key=True)

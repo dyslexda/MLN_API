@@ -112,7 +112,8 @@ class LeagueStandings():
             self.conferences_todict.append(self.conferences[conference.League].to_dict())
     def to_dict(self):
         return {
-            'season':5,
+            'season':Metadata.get_by_id(1).Current_Season,
+            'session':Metadata.get_by_id(1).Current_Session,
             'standings': self.conferences_todict}
 
 class ConferenceStandings():
