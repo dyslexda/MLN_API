@@ -261,9 +261,14 @@ def update_persons():
             if not created:
                 diff = deepdiff.DeepDiff(person.sheets_compare(),p)
                 if bool(diff):
+                    print(diff)
                     changed = {}
-                    for val in diff['values_changed']: changed[val[6:-2]] = diff['values_changed'][val]['new_value']
-                    Persons.update(changed).where(Persons.PersonID == person.PersonID).execute()
+                    for diff_type in ['values_changed','type_changes']:
+                        if diff_type in diff:
+                            for val in diff[diff_type]: 
+                                if diff[diff_type][val]['new_value'] != '#REF!':
+                                    changed[val[6:-2]] = diff[diff_type][val]['new_value']
+                    if bool(changed): Persons.update(changed).where(Persons.PersonID == person.PersonID).execute()
 
 def validate_schedules(schedules):
     ref_sched = []
@@ -436,7 +441,7 @@ def update_entry(line):
 
 def main():
     access_sheets()
-#    generate_db()
+    generate_db()
     loop = asyncio.get_event_loop()
     cors = asyncio.wait([update_persons(60*60),update_schedules(60*5),update_teams(60*60),update_pas(60*5),update_lineups(60*5),update_meta(60*60)])
     loop.run_until_complete(cors)
