@@ -63,21 +63,21 @@ def access_sheets():
     gSheet = pygsheets.authorize(service_file=secret_path)
     global prev_pas_sh, cur_pas_sh, persons_sh, teams_sh, schedules_sh, persons_defaults, home_sh, lineups_sh
     p_master_log = gSheet.open_by_key(environ.get('P_MASTER_LOG'))
-    prev_pas_sh = p_master_log.worksheet_by_title("All_PAs_1-5")
-    cur_pas_sh = p_master_log.worksheet_by_title("All_PAs_6")
+    prev_pas_sh = p_master_log.worksheet_by_title("All_PAs_1-6")
+    cur_pas_sh = p_master_log.worksheet_by_title("All_PAs_7")
     persons_sh = p_master_log.worksheet_by_title("Persons")
     teams_sh = p_master_log.worksheet_by_title("Teams")
     schedules_sh = p_master_log.worksheet_by_title("Schedule")
-    ump_central = gSheet.open_by_key('15s8vfZMNPx-yLVQTegSqobNlNeMrlt2ooWJpQmvbjBg')
+    ump_central = gSheet.open_by_key('1qcYw23HyCR3b7_DNWS4hczthR_pxadGsYrZwD-W5znE')
     home_sh = ump_central.worksheet_by_title('HOME')
     lineups_sh = ump_central.worksheet_by_title('Lineup Cards')
 
 def generate_db():
     db.connect(reuse_if_open=True)
-    db.drop_tables([PAs,Lineups])
-    db.create_tables([PAs])
-    build_plays_old()
-    build_plays_cur()
+#    db.drop_tables([PAs,Lineups])
+#    db.create_tables([PAs])
+#    build_plays_old()
+#    build_plays_cur()
     persons = build_persons()
     teams = build_teams()
     schedules = build_schedules()
@@ -160,11 +160,11 @@ def build_persons():
     persons.pop(0) #header row
     ref_person = []
     for person in persons:
-        if person['Discord_ID'] == '202278109708419072': ref_person.append(person)
+        if person['Discord_ID'] == '293940505614483456': ref_person.append(person)
     try:
         assert len(ref_person) == 1
-        assert ref_person[0]['PersonID'] == '2069'
-        assert ref_person[0]['Stats_Name'] == 'Tygen Shinybeard'
+        assert ref_person[0]['PersonID'] == '1001'
+        assert ref_person[0]['Stats_Name'] == 'Crash Davis'
         return(persons)
     except AssertionError:
         return(None)
@@ -199,10 +199,10 @@ def build_schedules():
                 schedules.append(schedule)
     ref_sched = []
     for sched in schedules:
-        if sched['Game_No'] == '60101': ref_sched.append(sched)
+        if sched['Game_No'] == '70101': ref_sched.append(sched)
     try:
         assert len(ref_sched) == 1
-        assert ref_sched[0]['Game_ID'] == 'GHGACP1'
+        assert ref_sched[0]['Game_ID'] == 'PORACP1'
         return(schedules)
     except AssertionError:
         return(None)
@@ -234,8 +234,8 @@ def validate_persons(persons):
         if person['Discord_ID'] == '202278109708419072': ref_person.append(person)
     try:
         assert len(ref_person) == 1
-        assert ref_person[0]['PersonID'] == 2069
-        assert ref_person[0]['Stats_Name'] == 'Tygen Shinybeard'
+        assert ref_person[0]['PersonID'] == 1001
+        assert ref_person[0]['Stats_Name'] == 'Crash Davis'
         return(persons)
     except AssertionError:
         return(None)
@@ -273,10 +273,10 @@ def update_persons():
 def validate_schedules(schedules):
     ref_sched = []
     for sched in schedules:
-        if sched['Game_No'] == 60101: ref_sched.append(sched)
+        if sched['Game_No'] == 70101: ref_sched.append(sched)
     try:
         assert len(ref_sched) == 1
-        assert ref_sched[0]['Game_ID'] == 'GHGACP1'
+        assert ref_sched[0]['Game_ID'] == 'PORACP1'
         return(schedules)
     except AssertionError:
         return(None)
@@ -337,6 +337,7 @@ def update_teams():
             if bool(diff):
                 changed = {}
                 for val in diff['values_changed']: changed[val[6:-2]] = diff['values_changed'][val]['new_value']
+                print(val,changed)
                 Teams.update(changed).where(Teams.TID == team.TID).execute()
 
 class lineupCard():
@@ -441,7 +442,7 @@ def update_entry(line):
 
 def main():
     access_sheets()
-    generate_db()
+#    generate_db()
     loop = asyncio.get_event_loop()
     cors = asyncio.wait([update_persons(60*60),update_schedules(60*5),update_teams(60*60),update_pas(60*5),update_lineups(60*5),update_meta(60*60)])
     loop.run_until_complete(cors)
