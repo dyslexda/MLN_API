@@ -9,7 +9,7 @@ from playhouse.shortcuts import model_to_dict
 secret_path = basedir + '/shared/client_secret.json'
 
 # Keys for zipping dicts for entering to database
-all_pas_keys = ['Play_No','Inning','Outs','BRC','Play_Type','Pitcher','Pitch_No','Batter','Swing_No','Catcher','Throw_No','Runner','Steal_No','Result','Run_Scored','Ghost_Scored','RBIs','Stolen_Base','Diff','Runs_Scored_On_Play','Off_Team','Def_Team','Game_No','Session_No','Inning_No','Pitcher_ID','Batter_ID','Catcher_ID','Runner_ID']
+all_pas_keys = ['Play_No','Inning','Outs','BRC','Play_Type','Pitcher','Pitch_No','Batter','Swing_No','Catcher','Throw_No','Runner','Steal_No','Result','Run_Scored','Ghost_Scored','RBIs','Stolen_Base','Diff','Runs_Scored_On_Play','Off_Team','Def_Team','Game_No','Session_No','Inning_No','Pitcher_ID','Batter_ID','Catcher_ID','Runner_ID','Scored1','Scored2','Scored3','Scored4','Run1','Run2','Run3','Run4','Scored1_ID','Scored2_ID','Scored3_ID','Scored4_ID','Run1_ID','Run2_ID','Run3_ID','Run4_ID']
 
 persons_keys = ['PersonID','Current_Name','Stats_Name','Reddit','Discord','Discord_ID','Team','Player','Captain','GM','Retired','Hiatus','Rookie','Primary','Backup','Hand','CON','EYE','PWR','SPD','MOV','CMD','VEL','AWR']
 
@@ -74,10 +74,10 @@ def access_sheets():
 
 def generate_db():
     db.connect(reuse_if_open=True)
-#    db.drop_tables([PAs,Lineups])
-#    db.create_tables([PAs])
-#    build_plays_old()
-#    build_plays_cur()
+    db.drop_tables([PAs,Lineups])
+    db.create_tables([PAs])
+    build_plays_old()
+    build_plays_cur()
     persons = build_persons()
     teams = build_teams()
     schedules = build_schedules()
@@ -115,7 +115,7 @@ def build_plays_cur():
         PAs.insert_many(pas).execute()
 
 def build_plays_old():
-    ranges = (("A2","AC5000"),("A5001","AC10000"),("A10001","AC15000"),("A15001","AC20000"),("A20001","AC25000"),("A25001","AC28920"))
+    ranges = (("A2","AS5000"),("A5001","AS10000"),("A10001","AS15000"),("A15001","AS20000"),("A20001","AS25000"),("A25001","AS30000"),("A30000","AS35393"))
     for range in ranges:
         pas = []
         prev_pas_val = prev_pas_sh.get_values(start=range[0],end=range[1],include_tailing_empty_rows=False)
@@ -211,7 +211,7 @@ def build_schedules():
 def update_pas():
     pas_list = cur_pas_sh.get_all_values(include_tailing_empty_rows=False)
     cur_session = pas_list[-1][0][0:3]
-    int_list = ['Play_No','Outs','BRC','Pitch_No','Swing_No','Throw_No','Steal_No','Run_Scored','Ghost_Scored','RBIs','Stolen_Base','Diff','Runs_Scored_On_Play','Game_No','Session_No','Inning_No','Pitcher_ID','Batter_ID','Catcher_ID','Runner_ID']
+    int_list = ['Play_No','Outs','BRC','Pitch_No','Swing_No','Throw_No','Steal_No','Run_Scored','Ghost_Scored','RBIs','Stolen_Base','Diff','Runs_Scored_On_Play','Game_No','Session_No','Inning_No','Pitcher_ID','Batter_ID','Catcher_ID','Runner_ID','Scored1_ID','Scored2_ID','Scored3_ID','Scored4_ID','Run1_ID','Run2_ID','Run3_ID','Run4_ID']
     for i in pas_list:
         if i[0].startswith(cur_session):
             sheet_pa_dict = dict(zip(all_pas_keys,i))
@@ -442,10 +442,11 @@ def update_entry(line):
 
 def main():
     access_sheets()
-#    generate_db()
+    generate_db()
     loop = asyncio.get_event_loop()
     cors = asyncio.wait([update_persons(60*60),update_schedules(60*5),update_teams(60*60),update_pas(60*5),update_lineups(60*5),update_meta(60*60)])
     loop.run_until_complete(cors)
+
 
 if __name__ == "__main__":
     main()

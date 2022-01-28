@@ -227,6 +227,22 @@ class PAs(BaseModel):
     Batter_ID = IntegerField(null=True)
     Catcher_ID = IntegerField(null=True)
     Runner_ID = IntegerField(null=True)
+    Scored1 = CharField(null=True)
+    Scored2 = CharField(null=True)
+    Scored3 = CharField(null=True)
+    Scored4 = CharField(null=True)
+    Run1 = CharField(null=True)
+    Run2 = CharField(null=True)
+    Run3 = CharField(null=True)
+    Run4 = CharField(null=True)
+    Scored1_ID = IntegerField(null=True)
+    Scored2_ID = IntegerField(null=True)
+    Scored3_ID = IntegerField(null=True)
+    Scored4_ID = IntegerField(null=True)
+    Run1_ID = IntegerField(null=True)
+    Run2_ID = IntegerField(null=True)
+    Run3_ID = IntegerField(null=True)
+    Run4_ID = IntegerField(null=True)
 
     def sheets_compare(self):
         str_dict = {
@@ -258,7 +274,23 @@ class PAs(BaseModel):
         'Pitcher_ID': str(self.Pitcher_ID),
         'Batter_ID': str(self.Batter_ID),
         'Catcher_ID': str(self.Catcher_ID),
-        'Runner_ID': str(self.Runner_ID)}
+        'Runner_ID': str(self.Runner_ID),
+        'Scored1': str(self.Scored1),
+        'Scored2': str(self.Scored2),
+        'Scored3': str(self.Scored3),
+        'Scored4': str(self.Scored4),
+        'Run1': str(self.Run1),
+        'Run2': str(self.Run2),
+        'Run3': str(self.Run3),
+        'Run4': str(self.Run4),
+        'Scored1_ID': str(self.Scored1_ID),
+        'Scored2_ID': str(self.Scored2_ID),
+        'Scored3_ID': str(self.Scored3_ID),
+        'Scored4_ID': str(self.Scored4_ID),
+        'Run1_ID': str(self.Run1_ID),
+        'Run2_ID': str(self.Run2_ID),
+        'Run3_ID': str(self.Run3_ID),
+        'Run4_ID': str(self.Run4_ID)}
         return(str_dict)
 
     def sheets_compare_int(self):
@@ -291,7 +323,23 @@ class PAs(BaseModel):
         'Pitcher_ID': self.Pitcher_ID,
         'Batter_ID': self.Batter_ID,
         'Catcher_ID': self.Catcher_ID,
-        'Runner_ID': self.Runner_ID}
+        'Runner_ID': self.Runner_ID,
+        'Scored1': self.Scored1,
+        'Scored2': self.Scored2,
+        'Scored3': self.Scored3,
+        'Scored4': self.Scored4,
+        'Run1': self.Run1,
+        'Run2': self.Run2,
+        'Run3': self.Run3,
+        'Run4': self.Run4,
+        'Scored1_ID': self.Scored1_ID,
+        'Scored2_ID': self.Scored2_ID,
+        'Scored3_ID': self.Scored3_ID,
+        'Scored4_ID': self.Scored4_ID,
+        'Run1_ID': self.Run1_ID,
+        'Run2_ID': self.Run2_ID,
+        'Run3_ID': self.Run3_ID,
+        'Run4_ID': self.Run4_ID}
         return(int_dict)
 
 class PlaysSchema(ModelSchema):
