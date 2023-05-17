@@ -63,12 +63,12 @@ def access_sheets():
     gSheet = pygsheets.authorize(service_file=secret_path)
     global prev_pas_sh, cur_pas_sh, persons_sh, teams_sh, schedules_sh, persons_defaults, home_sh, lineups_sh
     p_master_log = gSheet.open_by_key(environ.get('P_MASTER_LOG'))
-    prev_pas_sh = p_master_log.worksheet_by_title("All_PAs_1-6")
-    cur_pas_sh = p_master_log.worksheet_by_title("All_PAs_7")
+    prev_pas_sh = p_master_log.worksheet_by_title("All_PAs_1-7")
+    cur_pas_sh = p_master_log.worksheet_by_title("All_PAs_8")
     persons_sh = p_master_log.worksheet_by_title("Persons")
     teams_sh = p_master_log.worksheet_by_title("Teams")
     schedules_sh = p_master_log.worksheet_by_title("Schedule")
-    ump_central = gSheet.open_by_key('1qcYw23HyCR3b7_DNWS4hczthR_pxadGsYrZwD-W5znE')
+    ump_central = gSheet.open_by_key('1bnhFwmnuK25NQ29CAeVQlwV-BI_ewlfcnN56H1WNjwM')
     home_sh = ump_central.worksheet_by_title('HOME')
     lineups_sh = ump_central.worksheet_by_title('Lineup Cards')
 
@@ -115,7 +115,7 @@ def build_plays_cur():
         PAs.insert_many(pas).execute()
 
 def build_plays_old():
-    ranges = (("A2","AS5000"),("A5001","AS10000"),("A10001","AS15000"),("A15001","AS20000"),("A20001","AS25000"),("A25001","AS30000"),("A30000","AS35393"))
+    ranges = (("A2","AS5000"),("A5001","AS10000"),("A10001","AS15000"),("A15001","AS20000"),("A20001","AS25000"),("A25001","AS30000"),("A30000","AS35000"),("A35001","AS40000"),("A40001","AS41756"))
     for range in ranges:
         pas = []
         prev_pas_val = prev_pas_sh.get_values(start=range[0],end=range[1],include_tailing_empty_rows=False)
@@ -160,11 +160,11 @@ def build_persons():
     persons.pop(0) #header row
     ref_person = []
     for person in persons:
-        if person['Discord_ID'] == '293940505614483456': ref_person.append(person)
+        if person['Discord_ID'] == '136843419321368576': ref_person.append(person)
     try:
         assert len(ref_person) == 1
-        assert ref_person[0]['PersonID'] == '1001'
-        assert ref_person[0]['Stats_Name'] == 'Crash Davis'
+        assert ref_person[0]['PersonID'] == '1097'
+        assert ref_person[0]['Stats_Name'] == 'Jameson Poe'
         return(persons)
     except AssertionError:
         return(None)
@@ -199,10 +199,10 @@ def build_schedules():
                 schedules.append(schedule)
     ref_sched = []
     for sched in schedules:
-        if sched['Game_No'] == '70101': ref_sched.append(sched)
+        if sched['Game_No'] == '80101': ref_sched.append(sched)
     try:
         assert len(ref_sched) == 1
-        assert ref_sched[0]['Game_ID'] == 'PORACP1'
+        assert ref_sched[0]['Game_ID'] == 'ACPOGO1'
         return(schedules)
     except AssertionError:
         return(None)
@@ -231,11 +231,11 @@ def update_pas():
 def validate_persons(persons):
     ref_person = []
     for person in persons:
-        if person['Discord_ID'] == '202278109708419072': ref_person.append(person)
+        if person['Discord_ID'] == '225468192443727873': ref_person.append(person)
     try:
         assert len(ref_person) == 1
-        assert ref_person[0]['PersonID'] == 1001
-        assert ref_person[0]['Stats_Name'] == 'Crash Davis'
+        assert ref_person[0]['PersonID'] == 1004
+        assert ref_person[0]['Stats_Name'] == 'Pops Dongoria'
         return(persons)
     except AssertionError:
         return(None)
@@ -260,8 +260,8 @@ def update_persons():
             person, created = Persons.get_or_create(PersonID = p['PersonID'],defaults=p)
             if not created:
                 diff = deepdiff.DeepDiff(person.sheets_compare(),p)
+                if p['PersonID'] == '1107': print(diff,person.sheets_compare(),p)
                 if bool(diff):
-                    print(diff)
                     changed = {}
                     for diff_type in ['values_changed','type_changes']:
                         if diff_type in diff:
@@ -273,10 +273,10 @@ def update_persons():
 def validate_schedules(schedules):
     ref_sched = []
     for sched in schedules:
-        if sched['Game_No'] == 70101: ref_sched.append(sched)
+        if sched['Game_No'] == 80102: ref_sched.append(sched)
     try:
         assert len(ref_sched) == 1
-        assert ref_sched[0]['Game_ID'] == 'PORACP1'
+        assert ref_sched[0]['Game_ID'] == 'PORGHG1'
         return(schedules)
     except AssertionError:
         return(None)
@@ -326,10 +326,12 @@ def update_teams():
     teams = []
     teams_data = teams_sh.get_all_values(include_tailing_empty_rows=False)
     for t in teams_data:
+        print(t)
         team = dict(zip(teams_keys,t))
         teams.append(team)
     teams.pop(0)
     teams = validate_teams(teams)
+    print(teams)
     if teams:
         for t in teams: 
             team = Teams.get(Teams.TID == t['TID'])
@@ -442,11 +444,10 @@ def update_entry(line):
 
 def main():
     access_sheets()
-    generate_db()
+   # generate_db()
     loop = asyncio.get_event_loop()
     cors = asyncio.wait([update_persons(60*60),update_schedules(60*5),update_teams(60*60),update_pas(60*5),update_lineups(60*5),update_meta(60*60)])
     loop.run_until_complete(cors)
-
 
 if __name__ == "__main__":
     main()
